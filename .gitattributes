@@ -1,0 +1,4 @@
+# O Prettier do projeto exige quebra de linha LF; sem isto, o git no Windows converteria
+# para CRLF ao baixar e o "format --check" falharia para quem clonar o repositório.
+* text=auto eol=lf
+*.png binary
