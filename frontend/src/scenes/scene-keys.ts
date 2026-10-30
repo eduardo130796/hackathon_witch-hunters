@@ -4,4 +4,5 @@ export const SCENE_KEYS = {
   menu: 'MenuScene',
   level: 'LevelScene',
   ranking: 'RankingScene',
+  result: 'ResultScene',
 } as const;

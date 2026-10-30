@@ -3,6 +3,7 @@ import {
   ENEMY_HITBOX_HEIGHT_RATIO,
   ENEMY_HITBOX_WIDTH_RATIO,
   ENEMY_HURT_DURATION_MS,
+  KNOCKBACK_DURATION_MS,
 } from '../config/balance';
 import { bodyBounds, dynamicBody, type Facing, type HitOutcome } from './hitbox';
 
@@ -27,7 +28,9 @@ interface EnemyTraits {
 export abstract class Enemy extends Phaser.Physics.Arcade.Sprite {
   protected facing: Facing = 1;
   protected hurtEndsAt = 0;
+  private knockbackEndsAt = 0;
   private health: number;
+  private readonly maxHealth: number;
   private readonly patrolFromX: number;
   private readonly patrolToX: number;
   private readonly targetDisplayHeight: number;
@@ -40,6 +43,7 @@ export abstract class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.setOrigin(0.5, 1);
     this.setCollideWorldBounds(true);
     this.health = traits.maxHealth;
+    this.maxHealth = traits.maxHealth;
     this.patrolFromX = placement.patrolFromX;
     this.patrolToX = placement.patrolToX;
     this.targetDisplayHeight = traits.displayHeight;
@@ -65,6 +69,11 @@ export abstract class Enemy extends Phaser.Physics.Arcade.Sprite {
     return this.health > 0;
   }
 
+  // Fração de 0 a 1, para barras de vida não precisarem conhecer a vida máxima de cada tipo.
+  getHealthRatio(): number {
+    return this.health / this.maxHealth;
+  }
+
   getHurtbox(): Phaser.Geom.Rectangle {
     return bodyBounds(this.arcadeBody);
   }
@@ -86,8 +95,21 @@ export abstract class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.setFlipX(direction === -1);
   }
 
+  // Durante o empurrão a velocidade é mantida: a pose de dano chama isto a cada quadro e,
+  // sem a exceção, zeraria o recuo no quadro seguinte ao golpe. Basta proteger este método
+  // porque KNOCKBACK_DURATION_MS é menor que ENEMY_HURT_DURATION_MS: o empurrão sempre
+  // termina dentro da pose de dano, antes de patrulha ou perseguição voltarem a mover.
   protected stopMoving(): void {
+    if (this.scene.time.now < this.knockbackEndsAt) {
+      return;
+    }
     this.setVelocityX(0);
+  }
+
+  // Chamado pelo EffectsSystem quando um golpe não fatal conecta.
+  applyKnockback(velocityX: number, velocityY: number): void {
+    this.setVelocity(velocityX, velocityY);
+    this.knockbackEndsAt = this.scene.time.now + KNOCKBACK_DURATION_MS;
   }
 
   // O corpo é desligado para o cadáver não colidir nem receber golpes; a imagem fica na

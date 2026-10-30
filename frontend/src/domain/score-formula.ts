@@ -9,28 +9,46 @@ export interface MatchCounters {
   durationMs: number;
 }
 
+// Cada parcela da fórmula separada, para a tela de resultado mostrar de onde veio cada ponto.
+// Penalidades são positivas; quem exibe decide o sinal.
+export interface ScoreBreakdown {
+  witchPoints: number;
+  innocentPenalty: number;
+  damagePenalty: number;
+  elapsedSeconds: number;
+  timeBonus: number;
+  total: number;
+}
+
 /**
- * Estima a pontuação para exibir durante a partida.
+ * Decompõe a pontuação estimada em parcelas.
  *
  * Deve ser idêntica a calculateScore em backend/src/services/score.service.ts.
  * O resultado aqui é só feedback visual: a pontuação oficial é sempre a devolvida pelo servidor.
  *
  * Regra: bruxas × 100 − inocentes × 250 − dano × 5 + max(0, 300 − segundos) × 10,
- * com segundos arredondados para baixo e resultado final nunca negativo.
+ * com segundos arredondados para baixo e total nunca negativo.
  *
  * @param counters Contadores da partida (bruxas, inocentes, dano e duração em ms).
- * @returns Pontuação estimada, inteira e não negativa.
+ * @returns Cada parcela da fórmula e o total, inteiro e não negativo.
  */
-export function estimateScore(counters: MatchCounters): number {
+export function scoreBreakdown(counters: MatchCounters): ScoreBreakdown {
   const elapsedSeconds = Math.floor(counters.durationMs / MILLISECONDS_PER_SECOND);
   const remainingSeconds = Math.max(0, SCORE_RULES.timeLimitSeconds - elapsedSeconds);
+  const witchPoints = counters.witchesKilled * SCORE_RULES.witchPoints;
+  const innocentPenalty = counters.innocentsKilled * SCORE_RULES.innocentPenalty;
+  const damagePenalty = counters.damageTaken * SCORE_RULES.damagePenalty;
   const timeBonus = remainingSeconds * SCORE_RULES.timeBonusPerSecond;
+  const total = Math.max(0, witchPoints - innocentPenalty - damagePenalty + timeBonus);
+  return { witchPoints, innocentPenalty, damagePenalty, elapsedSeconds, timeBonus, total };
+}
 
-  const points =
-    counters.witchesKilled * SCORE_RULES.witchPoints -
-    counters.innocentsKilled * SCORE_RULES.innocentPenalty -
-    counters.damageTaken * SCORE_RULES.damagePenalty +
-    timeBonus;
-
-  return Math.max(0, points);
+/**
+ * Estima a pontuação para exibir durante a partida.
+ *
+ * @param counters Contadores da partida.
+ * @returns O total de scoreBreakdown: inteiro e não negativo.
+ */
+export function estimateScore(counters: MatchCounters): number {
+  return scoreBreakdown(counters).total;
 }

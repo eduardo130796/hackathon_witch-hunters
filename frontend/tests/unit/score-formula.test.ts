@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { estimateScore } from '../../src/domain/score-formula';
+import { estimateScore, scoreBreakdown } from '../../src/domain/score-formula';
 
 // Mesmos casos de backend/tests/unit/score.service.test.ts: se a fórmula divergir do servidor,
 // um dos dois conjuntos de testes quebra.
@@ -42,5 +42,20 @@ describe('estimateScore', () => {
       durationMs: 600_000,
     });
     expect(score).toBe(100);
+  });
+});
+
+describe('scoreBreakdown', () => {
+  it('separa cada parcela da fórmula, com penalidades positivas', () => {
+    expect(
+      scoreBreakdown({ witchesKilled: 2, innocentsKilled: 1, damageTaken: 3, durationMs: 42_900 }),
+    ).toEqual({
+      witchPoints: 200,
+      innocentPenalty: 250,
+      damagePenalty: 15,
+      elapsedSeconds: 42,
+      timeBonus: 2580,
+      total: 2515,
+    });
   });
 });

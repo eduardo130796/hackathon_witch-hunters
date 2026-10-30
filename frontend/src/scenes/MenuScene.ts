@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { getAudioSystem } from '../systems/AudioSystem';
 import { GothicButton } from '../ui/components/GothicButton';
 import { addFogLayers } from '../ui/effects/FogLayer';
 import { addVignette } from '../ui/effects/Vignette';
@@ -29,18 +30,30 @@ export class MenuScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setShadow(0, SPACING.xs, cssColor(COLORS.danger), SPACING.sm);
 
+    // A trilha do menu continua tocando no ranking (playMenuTheme ignora a trilha atual) e só
+    // dá lugar à da fase quando a partida começa, com fade feito pela própria fase: um fade
+    // iniciado aqui seria cortado no meio, porque o menu é encerrado logo após o clique.
+    const audio = getAudioSystem(this.game);
+    audio.playMenuTheme(this);
+    audio.bindMuteKey(this);
+    // O clique toca antes da troca de cena; sem o arquivo de clique, nada acontece.
+    const goTo = (sceneKey: string) => (): void => {
+      audio.playClick();
+      this.scene.start(sceneKey);
+    };
+
     const firstButtonY = height * firstButtonYRatio;
     new GothicButton(this, {
       x: centerX,
       y: firstButtonY,
       label: 'Iniciar',
-      onClick: () => this.scene.start(SCENE_KEYS.level),
+      onClick: goTo(SCENE_KEYS.level),
     });
     new GothicButton(this, {
       x: centerX,
       y: firstButtonY + buttonGap,
       label: 'Ranking',
-      onClick: () => this.scene.start(SCENE_KEYS.ranking),
+      onClick: goTo(SCENE_KEYS.ranking),
     });
 
     this.cameras.main.fadeIn(TIMING_MS.slow);

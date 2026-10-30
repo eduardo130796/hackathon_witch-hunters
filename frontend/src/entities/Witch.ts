@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import {
   WITCH_ATTACK_COOLDOWN_MS,
+  WITCH_ATTACK_DAMAGE,
   WITCH_ATTACK_DURATION_MS,
   WITCH_ATTACK_RANGE,
   WITCH_ATTACK_REACH,
@@ -42,7 +43,26 @@ interface WitchTarget {
   isAlive(): boolean;
 }
 
+// O que muda entre a bruxa comum e suas versões mais fortes (o chefe, as bruxas de trechos
+// avançados). Opcionais no construtor: sem nada, vale a bruxa comum de balance.ts.
+export interface WitchTraits {
+  maxHealth: number;
+  displayHeight: number;
+  attackDamage: number;
+  detectionRadius: number;
+}
+
+const COMMON_WITCH_TRAITS: WitchTraits = {
+  maxHealth: WITCH_MAX_HEALTH,
+  displayHeight: WITCH_DISPLAY_HEIGHT,
+  attackDamage: WITCH_ATTACK_DAMAGE,
+  detectionRadius: WITCH_DETECTION_RADIUS,
+};
+
 export class Witch extends Enemy {
+  // Lido pelo CombatSystem, que aplica o dano: assim o chefe fere mais sem regra especial lá.
+  readonly attackDamage: number;
+  private readonly detectionRadius: number;
   private attackStartedAt = 0;
   private attackEndsAt = 0;
   private nextAttackAt = 0;
@@ -52,12 +72,16 @@ export class Witch extends Enemy {
     scene: Phaser.Scene,
     placement: EnemyPlacement,
     private readonly target: WitchTarget,
+    overrides: Partial<WitchTraits> = {},
   ) {
+    const traits = { ...COMMON_WITCH_TRAITS, ...overrides };
     super(scene, placement, {
       initialTextureKey: witchTextureKey(POSE_BY_STATE.patrol),
-      maxHealth: WITCH_MAX_HEALTH,
-      displayHeight: WITCH_DISPLAY_HEIGHT,
+      maxHealth: traits.maxHealth,
+      displayHeight: traits.displayHeight,
     });
+    this.attackDamage = traits.attackDamage;
+    this.detectionRadius = traits.detectionRadius;
     this.applyState('patrol');
   }
 
@@ -106,7 +130,7 @@ export class Witch extends Enemy {
     if (distance <= WITCH_ATTACK_RANGE && now >= this.nextAttackAt) {
       return 'attack';
     }
-    return distance <= WITCH_DETECTION_RADIUS ? 'chase' : 'patrol';
+    return distance <= this.detectionRadius ? 'chase' : 'patrol';
   }
 
   // Único ponto de troca de estado (seção 9.6), como no Player.

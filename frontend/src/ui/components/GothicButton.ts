@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { COLORS, FONTS, FONT_SIZES, LAYOUT, TIMING_MS, cssColor } from '../theme';
 
-const { width, height, borderWidth, hoverScale } = LAYOUT.button;
+const { width, height, borderWidth, hoverScale, disabledAlpha } = LAYOUT.button;
 
 interface GothicButtonOptions {
   x: number;
@@ -12,6 +12,7 @@ interface GothicButtonOptions {
 
 export class GothicButton extends Phaser.GameObjects.Container {
   private readonly background: Phaser.GameObjects.Rectangle;
+  private readonly label: Phaser.GameObjects.Text;
 
   constructor(scene: Phaser.Scene, options: GothicButtonOptions) {
     super(scene, options.x, options.y);
@@ -19,14 +20,14 @@ export class GothicButton extends Phaser.GameObjects.Container {
     this.background = scene.add
       .rectangle(0, 0, width, height, COLORS.panel)
       .setStrokeStyle(borderWidth, COLORS.panelBorder);
-    const label = scene.add
+    this.label = scene.add
       .text(0, 0, options.label, {
         fontFamily: FONTS.body,
         fontSize: FONT_SIZES.button,
         color: cssColor(COLORS.text),
       })
       .setOrigin(0.5);
-    this.add([this.background, label]);
+    this.add([this.background, this.label]);
 
     // Container não tem tamanho próprio; sem setSize o clique não teria área para acertar.
     this.setSize(width, height);
@@ -36,6 +37,23 @@ export class GothicButton extends Phaser.GameObjects.Container {
     this.on(Phaser.Input.Events.POINTER_DOWN, options.onClick);
 
     scene.add.existing(this);
+  }
+
+  setLabel(text: string): this {
+    this.label.setText(text);
+    return this;
+  }
+
+  // Desabilitar tira o clique de verdade (não só a aparência), para uma requisição em
+  // andamento não ser disparada duas vezes.
+  setEnabled(enabled: boolean): this {
+    if (enabled) {
+      this.setInteractive({ useHandCursor: true });
+    } else {
+      this.disableInteractive();
+      this.removeHighlight();
+    }
+    return this.setAlpha(enabled ? 1 : disabledAlpha);
   }
 
   private highlight(): void {

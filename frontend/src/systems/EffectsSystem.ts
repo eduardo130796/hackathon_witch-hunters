@@ -1,5 +1,17 @@
 import Phaser from 'phaser';
+import type { Facing } from '../entities/hitbox';
 import { EFFECTS, TIMING_MS } from '../ui/theme';
+
+// Quem pode ser empurrado: a entidade recebe a velocidade e decide por quanto tempo a mantém.
+interface Knockbackable {
+  applyKnockback(velocityX: number, velocityY: number): void;
+}
+
+// Força do empurrão em px/s: horizontal no sentido do golpe e lift vertical (negativo sobe).
+interface KnockbackForce {
+  horizontal: number;
+  lift: number;
+}
 
 interface BreathingEffect {
   tween: Phaser.Tweens.Tween;
@@ -10,6 +22,9 @@ interface BreathingEffect {
 // só peçam "respire" ou "pisque" sem conhecer duração, curva ou intensidade.
 export class EffectsSystem {
   private readonly breathingByTarget = new Map<Phaser.GameObjects.Sprite, BreathingEffect>();
+  private hitstopEndsAt = 0;
+  private hitstopTimer?: Phaser.Time.TimerEvent;
+  private shakeIntensity = 0;
 
   constructor(private readonly tweens: Phaser.Tweens.TweenManager) {}
 
@@ -49,5 +64,49 @@ export class EffectsSystem {
       repeat: blinkCount - 1,
       onComplete: () => target.setAlpha(1),
     });
+  }
+
+  // Congela a física por um instante quando um golpe conecta (hitstop): o quadro do impacto
+  // fica parado tempo bastante para o olho registrar o contato.
+  //
+  // Só a física para; o relógio da cena (scene.time) segue. Por isso os tempos de ataque, dano
+  // e invencibilidade continuam correndo durante a pausa. Com 70 a 220 ms isso é aceitável:
+  // as janelas encurtam um pouco na tela, e a invencibilidade correndo favorece o jogador.
+  // Parar o relógio também pararia o delayedCall que retoma a física.
+  //
+  // Golpes sobrepostos: a pausa termina no fim mais distante entre a atual e a nova, e nunca
+  // na soma das duas. Um segundo golpe no meio da pausa não a encerra cedo nem a prolonga sem fim.
+  hitstop(scene: Phaser.Scene, durationMs: number): void {
+    const endsAt = scene.time.now + durationMs;
+    if (endsAt <= this.hitstopEndsAt) {
+      return;
+    }
+    this.hitstopEndsAt = endsAt;
+    this.hitstopTimer?.remove(false);
+    scene.physics.world.isPaused = true;
+    this.hitstopTimer = scene.time.delayedCall(durationMs, () => {
+      scene.physics.world.isPaused = false;
+      this.hitstopTimer = undefined;
+    });
+  }
+
+  // Treme a câmera principal. Um tremor fraco não substitui um forte em andamento (o golpe
+  // comum logo depois da morte não pode apagar o tremor pesado); um mais forte substitui o
+  // fraco na hora, para o evento mais grave sempre ser sentido.
+  shakeCamera(scene: Phaser.Scene, intensity: number, durationMs: number): void {
+    const camera = scene.cameras.main;
+    if (camera.shakeEffect.isRunning && intensity < this.shakeIntensity) {
+      return;
+    }
+    this.shakeIntensity = intensity;
+    camera.shake(durationMs, intensity, true);
+  }
+
+  // Empurra o alvo para longe do golpe. A direção é a do golpe (de quem bate para quem
+  // apanha), então o alvo recua para o lado oposto ao atacante, como num impacto real.
+  // Quem mantém o empurrão por alguns quadros é a própria entidade, porque só ela sabe quando
+  // a IA ou o controle deixariam de sobrescrever a velocidade.
+  knockback(target: Knockbackable, direction: Facing, force: KnockbackForce): void {
+    target.applyKnockback(direction * force.horizontal, force.lift);
   }
 }

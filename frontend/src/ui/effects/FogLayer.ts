@@ -44,10 +44,17 @@ function createFogTexture(scene: Phaser.Scene): void {
   texture.refresh();
 }
 
-export function addFogLayers(scene: Phaser.Scene): void {
+// Desenha a textura na primeira vez e devolve a chave. Também usada pelo BackgroundSystem
+// como fundo provisório da fase, para os dois lugares terem a mesma névoa.
+export function ensureFogTexture(scene: Phaser.Scene): string {
   if (!scene.textures.exists(FOG_TEXTURE_KEY)) {
     createFogTexture(scene);
   }
+  return FOG_TEXTURE_KEY;
+}
+
+export function addFogLayers(scene: Phaser.Scene): void {
+  ensureFogTexture(scene);
   const { width, height } = scene.scale;
   for (const layer of EFFECTS.fogLayers) {
     const layerHeight = height * layer.heightRatio;
