@@ -3,7 +3,7 @@
 Jogo de plataforma gótico para navegador, com API própria e ranking mundial.
 Regras do projeto: [CLAUDE.md](CLAUDE.md).
 
-**Jogar online:** LINK_PUBLICO
+**Jogar online:** https://jogo-halloween.onrender.com
 
 ## Publicação (Render)
 
