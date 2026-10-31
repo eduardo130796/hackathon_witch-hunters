@@ -5,6 +5,8 @@ Regras do projeto: [CLAUDE.md](CLAUDE.md).
 
 **Jogar online:** https://jogo-halloween.onrender.com
 
+**Vídeo de demonstração:** https://youtu.be/RhnP_UQBUSw
+
 ## Publicação (Render)
 
 O `Dockerfile` da raiz gera um único serviço Node que entrega o jogo e a API na mesma URL.
