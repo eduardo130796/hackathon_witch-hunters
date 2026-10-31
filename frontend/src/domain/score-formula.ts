@@ -44,11 +44,16 @@ export function scoreBreakdown(counters: MatchCounters): ScoreBreakdown {
 }
 
 /**
- * Estima a pontuação para exibir durante a partida.
+ * Parte da pontuação que só muda quando o jogador age: bruxas menos penalidades, sem o
+ * bônus de tempo.
  *
- * @param counters Contadores da partida.
- * @returns O total de scoreBreakdown: inteiro e não negativo.
+ * Existe para o HUD: somado ao bônus, o número caía sozinho a cada segundo e o jogador lia
+ * a passagem do tempo como pontos perdidos. Não altera a fórmula; total continua sendo
+ * max(0, actionPoints + timeBonus).
+ *
+ * @param breakdown Parcelas devolvidas por scoreBreakdown.
+ * @returns witchPoints − innocentPenalty − damagePenalty. Pode ser negativo.
  */
-export function estimateScore(counters: MatchCounters): number {
-  return scoreBreakdown(counters).total;
+export function actionPoints(breakdown: ScoreBreakdown): number {
+  return breakdown.witchPoints - breakdown.innocentPenalty - breakdown.damagePenalty;
 }

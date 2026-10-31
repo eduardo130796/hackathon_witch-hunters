@@ -61,7 +61,7 @@ export class ScoreTracker {
     return Math.round(this.now() - this.startTime);
   }
 
-  // Formato aceito por estimateScore, para o HUD.
+  // Formato aceito por scoreBreakdown, para o HUD.
   getCounters(): MatchCounters {
     return {
       witchesKilled: this.witchesKilled,

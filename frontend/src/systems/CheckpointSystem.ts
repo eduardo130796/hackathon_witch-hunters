@@ -1,6 +1,6 @@
 import type { Player } from '../entities/Player';
 
-// Ponto onde o jogador reaparece: a posição da bandeira, e não a do jogador ao tocá-la, para
+// Ponto onde o jogador reaparece: a posição do ponto de controle, e não a do jogador ao cruzá-lo, para
 // ele nunca renascer no ar ou dentro de um inimigo.
 interface SpawnPoint {
   x: number;
@@ -22,8 +22,8 @@ export class CheckpointSystem {
   private readonly activatedIds = new Set<string>();
   private saved: SavedCheckpoint;
 
-  // O início da fase funciona como ponto de controle zero: quem morre antes da primeira
-  // bandeira volta ao começo com a vida inicial.
+  // O início da fase funciona como ponto de controle zero: quem morre antes do primeiro
+  // ponto de controle volta ao começo com a vida inicial.
   constructor(start: SpawnPoint, startHealth: number) {
     this.saved = { spawn: start, health: startHealth };
   }
@@ -32,7 +32,7 @@ export class CheckpointSystem {
     return this.activatedIds.has(checkpointId);
   }
 
-  // Cada bandeira vale uma vez: voltar a ela depois não sobrescreve a vida guardada.
+  // Cada ponto de controle vale uma vez: voltar a ele depois não sobrescreve a vida guardada.
   activate(checkpointId: string, spawn: SpawnPoint, player: Player): void {
     if (this.isActivated(checkpointId)) {
       return;

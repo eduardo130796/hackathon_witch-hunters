@@ -50,13 +50,14 @@ export const WITCH_MAX_HEALTH = 2;
 // de pontuação, que só vem se o jogador insistir.
 export const INNOCENT_MAX_HEALTH = 2;
 
-// px na tela. Próximos dos ~120px visíveis do cavaleiro, mas com menos sobra transparente,
-// para o herói continuar se destacando na cena.
+// px na tela. A bruxa usa a altura da figura (do chapéu aos pés), igual aos ~120px visíveis
+// do cavaleiro: os dois se enfrentam de igual para igual. O inocente usa a altura da imagem.
 export const WITCH_DISPLAY_HEIGHT = 120;
 export const INNOCENT_DISPLAY_HEIGHT = 104;
 
-// Fração da imagem ocupada pela caixa de colisão dos inimigos, centralizada, como no cavaleiro.
-// 0.35 da largura cobre tronco e pernas, sem o chapéu, o cajado e a barra do vestido.
+// Fração da imagem ocupada pela caixa de colisão dos inimigos com uma imagem por pose (hoje,
+// só o inocente; os inimigos com sprite sheet usam caixas medidas em pixels do quadro).
+// 0.35 da largura cobre tronco e pernas, sem os braços e a barra da roupa.
 export const ENEMY_HITBOX_WIDTH_RATIO = 0.35;
 // 0.93 da altura: medindo os PNGs, os pés ficam em média 9px acima da borda inferior (de
 // 256px). Uma caixa centralizada com 93% da altura termina nessa linha.
@@ -68,6 +69,30 @@ export const WITCH_PATROL_SPEED = 70;
 export const WITCH_CHASE_SPEED = 150;
 // px/s. O inocente anda mais devagar que a bruxa, para os dois serem fáceis de distinguir.
 export const INNOCENT_PATROL_SPEED = 50;
+// Encontro antes de uma fala (a Anciã no cemitério, a bruxa no fim da floresta): o personagem
+// só começa a andar quando o jogador está a 480px, dentro da meia tela (640px) que a câmera
+// mostra de cada lado, para o jogador vê-lo chegar; anda mais rápido que a patrulha, para a
+// espera não cansar (cerca de 3 s); e para a 120px, perto o bastante para parecer conversa e
+// fora do alcance do golpe da bruxa (WITCH_ATTACK_RANGE, 80px).
+export const NARRATIVE_APPROACH_START_RADIUS = 480;
+export const NARRATIVE_APPROACH_SPEED = 110;
+export const NARRATIVE_APPROACH_STOP_DISTANCE = 120;
+// Fuga da bruxa da provocação (ela corre para avisar as outras): mais rápida que a
+// perseguição (150), para o jogador não alcançá-la, e some a 760px do jogador, além da meia
+// tela (640px) que a câmera mostra de cada lado, ou seja, já fora da tela.
+// ms. Teto da espera do jogador enquanto alguém vem falar com ele: o encontro leva cerca de
+// 3 s (360px a 110px/s); passado o dobro, o controle volta de qualquer jeito, para um
+// personagem que não chegue (morto, preso) nunca travar a partida.
+export const APPROACH_MAX_DURATION_MS = 6000;
+// Portões de trecho (SegmentGateSystem). Mesma largura da parede da arena, pelo mesmo motivo:
+// o jogador nunca a atravessa num quadro. O aviso de portão fechado aparece no máximo a cada
+// 2 s, para não repetir enquanto o jogador continua empurrando a parede; e conta como
+// "empurrando" quem está a até 8px dela.
+export const SEGMENT_GATE_WALL_WIDTH = 64;
+export const GATE_MESSAGE_COOLDOWN_MS = 2000;
+export const GATE_TOUCH_DISTANCE = 8;
+export const WITCH_FLEE_SPEED = 220;
+export const WITCH_FLEE_VANISH_DISTANCE = 760;
 
 // px entre os pés da bruxa e os do jogador. 300px é cerca de 1/4 da tela: ela reage antes
 // de o jogador chegar, mas não o persegue desde o outro lado do mapa.
@@ -116,16 +141,15 @@ export const RESPAWN_DELAY_MS = 1500;
 // morte e entender o que aconteceu antes da troca de tela.
 export const DEATH_TO_RESULT_DELAY_MS = 1500;
 
-// ms entre entrar na zona final e a tela de resultado: um respiro para o jogador perceber
-// que venceu, em vez de a tela trocar no mesmo quadro.
-export const VICTORY_DELAY_MS = 1500;
+// ms entre a queda do demônio e a fala de epílogo (VictorySequenceSystem): a animação de
+// vitória do cavaleiro (até 7 quadros a 6 fps, ≈ 1,2 s) toca inteira e ainda sobra um respiro
+// com a pose final na tela, antes de o painel de fala cobrir a cena.
+export const VICTORY_POSE_MS = 1800;
 
 // --- Dificuldade por trecho (lida por levels/level-01.ts) ---
 
-// px. Nas ruínas a bruxa reage 100px antes que no cemitério (300): o jogador já aprendeu a
-// lutar e passa a ser surpreendido com mais frequência.
-export const ADVANCED_WITCH_DETECTION_RADIUS = 400;
-// px. Nas catacumbas, um passo entre as ruínas e a arena: a dificuldade sobe aos poucos.
+// px. Nas catacumbas a bruxa reage 140px antes que no cemitério (300): o jogador já passou
+// pela floresta (onde lobos e lobisomem usam números próprios) e é surpreendido mais vezes.
 export const CATACOMBS_WITCH_DETECTION_RADIUS = 440;
 // px. Na arena as bruxas de apoio enxergam ainda mais longe, para a luta com o chefe não
 // virar um duelo isolado.
@@ -285,3 +309,203 @@ export const AMBIENCE_MAX_INTERVAL_MS = 30000;
 // ms entre o início do som de entrada da arena e o início da música do chefe. O intro toca
 // sozinho primeiro, como um anúncio; a música entra depois, com fade, sob o fim do intro.
 export const BOSS_INTRO_TO_MUSIC_DELAY_MS = 2500;
+
+// --- Lobo (trecho da floresta) ---
+
+// Uma vida: o lobo cai com um golpe. Ele compensa a fragilidade com velocidade, então a
+// ameaça é chegar em bando, não aguentar a luta.
+export const WOLF_MAX_HEALTH = 1;
+// px/s. Mais rápidos que a bruxa (70 e 150), mas a perseguição fica abaixo de
+// PLAYER_MOVE_SPEED (260): o lobo alcança quem hesita, e o jogador ainda consegue fugir.
+export const WOLF_PATROL_SPEED = 110;
+export const WOLF_CHASE_SPEED = 230;
+// px na tela. O lobo anda de quatro: fica mais baixo que o cavaleiro (~120px), mas, como é
+// comprido, a largura visível chega a ~120px e ele continua fácil de ver.
+export const WOLF_DISPLAY_HEIGHT = 84;
+
+// --- Lobisomem (mini-chefe da floresta) ---
+
+// Cinco vidas: perto do chefe final (6), porque é o mini-chefe do trecho, mas sem igualá-lo.
+export const WEREWOLF_MAX_HEALTH = 5;
+// Cada golpe tira duas velas, o dobro da bruxa, como o chefe: o mini-chefe precisa assustar.
+export const WEREWOLF_DAMAGE = 2;
+// px/s. Mais lento que a bruxa (70 e 150): é forte e pesado, e a lentidão dá ao jogador a
+// chance de golpear e recuar.
+export const WEREWOLF_PATROL_SPEED = 50;
+export const WEREWOLF_CHASE_SPEED = 120;
+// px na tela. Cerca de 1,4 vez o cavaleiro (~120px): lido como mini-chefe à primeira vista,
+// sem competir com o chefe final (216px).
+export const WEREWOLF_DISPLAY_HEIGHT = 170;
+
+// --- Animações dos inimigos (sheets em grade uniforme) ---
+
+// Lobo (wolf-sheet.png): a arte original (wolf.png, grade irregular) foi remontada numa grade
+// de 6 colunas por 9 linhas, com quadros de 300x300. O quadro é largo porque o lobo é
+// comprido e o bote o estica ainda mais.
+export const WOLF_FRAME_SIZE = 300;
+export const WOLF_SHEET_COLUMNS = 6;
+// A última linha (fim da morte, deitado) tem só 4 quadros.
+export const WOLF_ROW_FRAME_COUNTS = [6, 6, 6, 6, 6, 6, 6, 6, 4] as const;
+// px dentro do quadro: linha dos pés em todos os quadros, definida na remontagem.
+export const WOLF_FEET_Y = 296;
+// px dentro do quadro: do topo do pelo às patas, medido na linha de repouso (y 175 a 296).
+export const WOLF_FIGURE_HEIGHT = 120;
+// px dentro do quadro. O lobo é mais comprido que alto: 130px cobrem tronco e patas, sem o
+// rabo e o focinho, e 100px vão do dorso às patas.
+export const WOLF_HITBOX_WIDTH = 130;
+export const WOLF_HITBOX_HEIGHT = 100;
+
+// Lobisomem (werewolf-sheet.png): grade de 6 colunas por 11 linhas, quadros de 240x240,
+// remontada a partir de werewolf.png.
+export const WEREWOLF_FRAME_SIZE = 240;
+export const WEREWOLF_SHEET_COLUMNS = 6;
+export const WEREWOLF_ROW_FRAME_COUNTS = [6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6] as const;
+export const WEREWOLF_FEET_Y = 236;
+// px dentro do quadro: da juba aos pés, medido na linha de repouso (y 107 a 236).
+export const WEREWOLF_FIGURE_HEIGHT = 130;
+// px dentro do quadro: tronco curvado e pernas, sem as garras estendidas.
+export const WEREWOLF_HITBOX_WIDTH = 80;
+export const WEREWOLF_HITBOX_HEIGHT = 120;
+
+// Quadros por segundo das animações em laço dos inimigos. Repouso devagar, para respirar;
+// caminhada mais rápida, para as patas acompanharem a velocidade sem parecerem deslizar.
+export const ENEMY_IDLE_FRAME_RATE = 6;
+export const ENEMY_WALK_FRAME_RATE = 10;
+// A queda é tocada uma vez, num ritmo que deixa o jogador ver o inimigo cair.
+export const ENEMY_DEATH_FRAME_RATE = 9;
+
+// --- Trecho final e narrativa (fase em cinco trechos) ---
+
+// px. No trecho final as bruxas enxergam ainda mais longe que na arena (480): várias
+// reagem juntas e o jogador enfrenta o "grande ataque" em vez de duelos isolados.
+export const FINAL_STAGE_WITCH_DETECTION_RADIUS = 520;
+// px. Largura da zona invisível de cada gatilho de diálogo. Mais larga que um passo do
+// jogador por quadro, para ele nunca atravessá-la sem ser detectado.
+export const NARRATIVE_TRIGGER_WIDTH = 64;
+// ms por caractere no efeito de máquina de escrever: rápido o bastante para não cansar, lento
+// o bastante para parecer fala.
+export const DIALOGUE_CHAR_INTERVAL_MS = 28;
+
+// Bruxa (witch-sheet.png): a arte original (witch.png, 1536x1024) tem grade irregular e um
+// brilho semitransparente de fundo. Ela foi limpa e remontada numa grade de 10 colunas por
+// 7 linhas, com quadros de 384x192: largos porque o cajado estendido chega longe do tronco.
+export const WITCH_SHEET_FRAME_WIDTH = 384;
+export const WITCH_SHEET_FRAME_HEIGHT = 192;
+export const WITCH_SHEET_COLUMNS = 10;
+export const WITCH_SHEET_ROW_FRAME_COUNTS = [9, 8, 8, 6, 10, 8, 4] as const;
+// px dentro do quadro: linha dos pés em todos os quadros, definida na remontagem.
+export const WITCH_SHEET_FEET_Y = 188;
+// px dentro do quadro: do chapéu aos pés, medido na linha de repouso (y 38 a 188).
+export const WITCH_SHEET_FIGURE_HEIGHT = 150;
+// px dentro do quadro: tronco e saia, sem o cajado e a aba do chapéu; a altura começa logo
+// abaixo da ponta do chapéu.
+export const WITCH_SHEET_HITBOX_WIDTH = 60;
+export const WITCH_SHEET_HITBOX_HEIGHT = 140;
+
+// --- Arena do demônio ---
+
+// px. Largura da parede invisível na entrada da arena, que impede o jogador de voltar ao
+// trecho de caminhada durante a luta. Mais larga que o passo do jogador por quadro, para ele
+// nunca atravessá-la, nem empurrado pelo recuo de um golpe.
+export const DEMON_ARENA_WALL_WIDTH = 64;
+// px da tela: onde fica a borda de baixo do ponto fraco do demônio. O cenário é escalado para
+// isso (DemonArenaSystem). Com o pulo do cavaleiro (cerca de 137px), o golpe no alto do pulo
+// cobre y ≈ 405–519; com a borda em 540, o ponto fraco (y ≈ 396–540) fica bem ao alcance de
+// um golpe pulando, e a imagem ainda cobre a tela inteira.
+export const DEMON_ARENA_WEAK_POINT_BOTTOM_Y = 540;
+
+// --- Demônio (chefe final da arena) ---
+// Sem DEMON_HIT_POINTS de propósito: o servidor calcula a pontuação oficial e só conhece
+// bruxas, inocentes e dano. Pontos por golpe no demônio nunca contariam no ranking, então
+// mostrá-los enganaria o jogador. A morte do demônio conta como uma bruxa (SCORE_RULES).
+
+// Oito vidas: com a janela vulnerável de 3 s e a pausa de dano, cabem cerca de três golpes
+// por ciclo, então a luta dura três ou quatro ciclos de ataque: clímax sem cansar.
+export const DEMON_MAX_HEALTH = 8;
+// Velas tiradas do jogador (de 5). A bola de fogo é avisada e fácil de evitar: tira uma.
+// A garra é mais rápida e pune quem fica parado: tira duas.
+export const DEMON_DAMAGE_FIREBALL = 1;
+export const DEMON_DAMAGE_CLAW = 2;
+// Ordem dos padrões: 'alternate' é previsível e ensina a luta; 'random' para quem já conhece.
+export const DEMON_ATTACK_ORDER: 'alternate' | 'random' = 'alternate';
+
+// ms de respiro depois do diálogo, antes do primeiro ataque: o jogador se posiciona.
+export const DEMON_INTRO_DURATION_MS = 1500;
+// ms em que o ponto fraco fica exposto depois de cada ataque: tempo de chegar e golpear.
+export const DEMON_VULNERABLE_DURATION_MS = 3000;
+// ms de reação a um golpe no ponto fraco. Maior que ATTACK_DURATION_MS (350): golpes
+// seguidos não somam dano sem pausa, e cada acerto é percebido.
+export const DEMON_HURT_DURATION_MS = 450;
+// ms entre a morte e a vitória: tempo de ver o demônio apagar antes da tela de resultado.
+export const DEMON_DEATH_DISPLAY_MS = 2500;
+// Brilho final do cenário na morte (0 a 255 por canal): 70 deixa o demônio quase apagado,
+// mas ainda visível, para o jogador ver quem derrotou.
+export const DEMON_DEATH_BRIGHTNESS = 70;
+
+// Ponto fraco: frações da imagem body.png EXIBIDA. ESTIMATIVA a confirmar rodando o jogo.
+// Olhando a arte, as rachaduras vermelhas mais brilhantes do peito convergem em x ≈ 50% e
+// y ≈ 45–50%; a estimativa inicial (50–62% de altura) ficava no fim do peito. A faixa
+// 44–60% cobre o centro do brilho e desce o bastante para o cavaleiro alcançar pulando.
+export const DEMON_WEAK_POINT = {
+  leftRatio: 0.44,
+  rightRatio: 0.56,
+  topRatio: 0.44,
+  bottomRatio: 0.6,
+} as const;
+
+// --- Demônio: bola de fogo ---
+
+// ms de aviso no chão antes de a bola cair: tempo de ver e sair da zona.
+export const DEMON_FIREBALL_TELEGRAPH_MS = 1200;
+// Quantas bolas por ataque. Duas: uma no jogador e uma ao lado, para fugir exigir escolha.
+export const DEMON_FIREBALL_COUNT = 2;
+// px entre duas bolas vizinhas: maior que o dobro do raio, para sobrar chão seguro entre elas.
+export const DEMON_FIREBALL_SPACING = 260;
+// px de meia largura da zona de impacto: a explosão cobre cerca de 1,5 cavaleiro de cada lado.
+export const FIREBALL_IMPACT_RADIUS = 80;
+// px de folga das paredes da arena, para a zona de impacto não sair da tela.
+export const DEMON_ARENA_MARGIN = 80;
+// ms de queda, do topo da tela ao chão: rápida como um meteoro, já que o aviso veio antes.
+export const DEMON_FIREBALL_FALL_MS = 450;
+// ms entre a queda de uma bola e a da seguinte: dois impactos distintos se leem melhor.
+export const DEMON_FIREBALL_STAGGER_MS = 200;
+// px de altura da bola na tela (a imagem tem 1774px): cerca de 1,7 cavaleiro, com a cauda.
+export const DEMON_FIREBALL_DISPLAY_HEIGHT = 200;
+// graus de inclinação: a bola cai levemente torta, como um meteoro, e não em linha reta.
+export const DEMON_FIREBALL_TILT_DEGREES = 12;
+// Tremor leve no impacto: menor que o golpe do jogador (0.005), porque é frequente.
+export const DEMON_FIREBALL_SHAKE_INTENSITY = 0.004;
+export const DEMON_FIREBALL_SHAKE_MS = 150;
+
+// --- Demônio: garra ---
+
+// ms de aviso (rachaduras e tremor) antes da garra subir. Menor que o da bola de fogo:
+// a garra é um único ponto, e o jogador só precisa dar um passo para o lado.
+export const DEMON_CLAW_TELEGRAPH_MS = 1000;
+// Tremor sutil durante o aviso: sentido, mas sem atrapalhar a leitura das rachaduras.
+export const DEMON_CLAW_TELEGRAPH_SHAKE_INTENSITY = 0.002;
+// ms que a garra leva para irromper: curto, para o golpe parecer violento.
+export const DEMON_CLAW_RISE_MS = 180;
+// ms que a garra fica erguida antes de descer: tempo de ver o golpe.
+export const DEMON_CLAW_HOLD_MS = 500;
+// ms de descida: mais lenta que a subida, o recuo não precisa de urgência.
+export const DEMON_CLAW_RETRACT_MS = 350;
+// px de altura da garra na tela (a imagem tem 1024px): o dobro do cavaleiro, uma ameaça clara.
+export const DEMON_CLAW_DISPLAY_HEIGHT = 260;
+// px que a base da imagem fica abaixo do chão: os destroços parecem sair de dentro dele.
+export const DEMON_CLAW_SINK = 30;
+// px de meia largura da zona de impacto: um pouco menos que meia garra (≈195px), para só os
+// dedos ferirem.
+export const CLAW_IMPACT_RADIUS = 110;
+// Tremor forte e hitstop curto no impacto: a garra é o golpe mais pesado do demônio.
+export const DEMON_CLAW_SHAKE_INTENSITY = 0.012;
+export const DEMON_CLAW_SHAKE_MS = 300;
+export const DEMON_CLAW_HITSTOP_MS = 90;
+// px/s do empurrão da garra no jogador: quase o dobro de PLAYER_KNOCKBACK_FORCE (300), para
+// a garra arremessar o cavaleiro, o que nenhum inimigo comum faz.
+export const DEMON_CLAW_KNOCKBACK_FORCE = 560;
+
+// --- Demônio: morte ---
+// Tremor pesado e longo: a queda do chefe final é o maior evento da partida.
+export const DEMON_DEATH_SHAKE_INTENSITY = 0.025;
+export const DEMON_DEATH_SHAKE_MS = 1200;

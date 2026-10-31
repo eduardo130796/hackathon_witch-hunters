@@ -28,21 +28,23 @@ export function resolveDeath(respawnsUsed: number, maxRespawns: number): DeathOu
 }
 
 interface VictoryCheck {
-  playerX: number;
-  finalZoneStartX: number;
-  bossDefeated: boolean;
+  // Todos os chefes comuns da fase (hoje, a Bruxa Anciã da arena) já foram derrotados.
+  allBossesDefeated: boolean;
+  // O demônio, chefe final, já foi derrotado (estado 'dead', depois da animação de morte).
+  demonDefeated: boolean;
 }
 
 /**
  * Diz se a partida foi vencida.
  *
- * Regra: é preciso as duas coisas, derrotar o chefe e chegar à saída. Só derrotar o chefe
- * não basta, para a vitória ser um gesto do jogador; só chegar à saída também não, para
- * ninguém vencer passando correndo pelo chefe.
+ * Regra: é preciso derrotar o demônio E todos os chefes comuns. Exigir o chefe da arena
+ * também impede vencer passando correndo por ele. Não há mais zona de saída: a arena do
+ * demônio fica no fim do mundo e trava o jogador lá dentro, então derrotá-lo já é chegar ao
+ * fim da fase.
  *
- * @param check Posição do jogador, início da zona final e se o chefe já morreu.
- * @returns true quando o jogador está na zona final com o chefe derrotado.
+ * @param check Se os chefes comuns e o demônio já foram derrotados.
+ * @returns true quando todos os chefes, inclusive o demônio, estão derrotados.
  */
 export function isVictory(check: VictoryCheck): boolean {
-  return check.bossDefeated && check.playerX >= check.finalZoneStartX;
+  return check.allBossesDefeated && check.demonDefeated;
 }

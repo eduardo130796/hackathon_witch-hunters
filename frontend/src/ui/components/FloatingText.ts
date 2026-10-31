@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { COLORS, FONTS, FONT_SIZES, LAYOUT, SPACING, TIMING_MS, cssColor } from '../theme';
 
-// announcement: aviso para ler com calma ("Ponto de controle"), com a fonte de títulos.
+// announcement: aviso para ler com calma ("Tentativas restantes"), com a fonte de títulos.
 // score: pontos que saltam do inimigo morto, na fonte do HUD para o jogador ligar o número ao
 // placar; sobem quase na hora, porque a luta continua e o texto não pode ficar no caminho.
 type FloatingTextVariant = 'announcement' | 'score';
@@ -11,7 +11,8 @@ const VARIANT_STYLES = {
     fontFamily: FONTS.title,
     fontSize: FONT_SIZES.button,
     fontStyle: 'bold',
-    strokeThickness: 0,
+    // Contorno escuro: sem ele, o aviso vermelho sumia contra os céus vermelhos dos fundos.
+    strokeThickness: SPACING.xs,
     holdMs: TIMING_MS.slow,
   },
   // O contorno na cor do fundo separa o número do sangue e dos personagens atrás dele.

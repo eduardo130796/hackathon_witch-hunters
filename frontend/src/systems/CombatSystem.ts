@@ -22,6 +22,18 @@ export interface EnemyHitEvent {
 export interface PlayerHitEvent {
   outcome: LandedOutcome;
   direction: Facing;
+  // Força do empurrão, só para golpes mais pesados que o padrão (a garra do demônio). Sem
+  // valor, vale o empurrão padrão do jogador.
+  knockbackForce?: number;
+}
+
+// Golpe que conectou no ponto fraco do demônio. Separado de EnemyHitEvent porque o demônio
+// é parte do cenário: não recua nem sangra como uma bruxa.
+export interface DemonHitEvent {
+  outcome: LandedOutcome;
+  weakPoint: Phaser.Geom.Rectangle;
+  direction: Facing;
+  scoreDelta: number;
 }
 
 // Quem reage aos golpes (efeitos visuais). O combate só avisa o que aconteceu; câmera,
@@ -29,6 +41,7 @@ export interface PlayerHitEvent {
 export interface CombatListener {
   onEnemyHit(event: EnemyHitEvent): void;
   onPlayerHit(event: PlayerHitEvent): void;
+  onDemonHit(event: DemonHitEvent): void;
 }
 
 // Comparar posições, e não para onde o atacante olha, acerta o sentido mesmo quando os
@@ -69,6 +82,8 @@ export class CombatSystem {
   // sobreposição continua verdadeira em todos eles; sem este registro, um único golpe
   // tiraria uma vida por quadro.
   private readonly swingsByAttacker = new Map<Attacker, SwingRecord>();
+  // Ponto fraco do chefe demônio, presente só enquanto a arena final está ativa.
+  private demon: Damageable | null = null;
 
   // O ouvinte é opcional: as regras funcionam iguais sem nenhum efeito visual conectado.
   constructor(
@@ -105,6 +120,53 @@ export class CombatSystem {
       }
       this.reportEnemyHit(innocent, innocentOutcome, -SCORE_RULES.innocentPenalty);
     }
+    this.resolveDemonHit();
+  }
+
+  // A arena liga o demônio ao entrar e o desliga ao sair (null). O dano no jogador não passa
+  // por aqui: os ataques do demônio têm zona de impacto própria, não golpe corpo a corpo.
+  setDemon(demon: Damageable | null): void {
+    this.demon = demon;
+  }
+
+  // Dano no jogador vindo de algo que não é um golpe corpo a corpo (bola de fogo, garra do
+  // demônio). Passa pelas mesmas regras do golpe de uma bruxa: o Player decide se vale
+  // (invencibilidade), o dano entra no placar e o ouvinte faz flash e empurrão.
+  applyEnvironmentHit(damage: number, sourceX: number, knockbackForce?: number): void {
+    const { player, scoreTracker } = this.combatants;
+    const outcome = player.takeDamage(damage);
+    if (outcome === 'ignored') {
+      return;
+    }
+    scoreTracker.recordDamage(damage);
+    this.listener?.onPlayerHit({
+      outcome,
+      direction: hitDirection({ x: sourceX }, player),
+      knockbackForce,
+    });
+  }
+
+  // Golpes no ponto fraco não valem pontos por acerto, porque o servidor só conhece bruxas,
+  // inocentes e dano. A morte do demônio conta como uma bruxa, como a do chefe Boss.
+  private resolveDemonHit(): void {
+    const { player, scoreTracker } = this.combatants;
+    if (!this.demon) {
+      return;
+    }
+    const outcome = this.resolveHit(player, this.demon, PLAYER_ATTACK_DAMAGE);
+    if (outcome === 'ignored') {
+      return;
+    }
+    if (outcome === 'killed') {
+      scoreTracker.recordWitchKill();
+    }
+    const weakPoint = this.demon.getHurtbox();
+    this.listener?.onDemonHit({
+      outcome,
+      weakPoint,
+      direction: hitDirection(player, { x: weakPoint.centerX }),
+      scoreDelta: outcome === 'killed' ? SCORE_RULES.witchPoints : 0,
+    });
   }
 
   // A variação de pontos sai da mesma tabela da fórmula (SCORE_RULES), e só a morte muda o

@@ -14,3 +14,8 @@ export const CONTROLS = {
 } as const satisfies Record<string, readonly KeyName[]>;
 
 export type ControlAction = keyof typeof CONTROLS;
+
+// Teclas que avançam a fala do DialogueBox (o clique também avança). Fora de CONTROLS porque
+// não são ações do cavaleiro: SPACE e J também pulam e atacam, e o LevelScene descarta esses
+// toques enquanto a fala está aberta, para fechar o diálogo não virar um pulo ou um golpe.
+export const DIALOGUE_ADVANCE_KEYS = ['SPACE', 'ENTER', 'J'] as const satisfies readonly KeyName[];

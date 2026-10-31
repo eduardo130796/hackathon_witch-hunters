@@ -1,11 +1,12 @@
 import Phaser from 'phaser';
 import { INNOCENT_POSES, innocentTextureKey } from '../entities/Innocent';
 import { KNIGHT_SHEET_KEY } from '../entities/knight-animations';
-import { WITCH_POSES, witchTextureKey } from '../entities/Witch';
+import { ENEMY_SHEETS } from '../entities/enemy-animations';
 import { KNIGHT_FRAME_SIZE } from '../config/balance';
 import { AUDIO_FILES } from '../config/audio-manifest';
-import { LEVEL_01 } from '../levels/level-01';
+import { LEVEL_01, type LevelSegment } from '../levels/level-01';
 import { BACKGROUND_LAYER_NUMBERS, backgroundLayerKey } from '../systems/BackgroundSystem';
+import { DEMON_BACKDROP_KEY } from '../systems/DemonArenaSystem';
 import { addVignette } from '../ui/effects/Vignette';
 import { waitForGameFonts } from '../ui/load-fonts';
 import { SCENE_KEYS } from './scene-keys';
@@ -21,7 +22,7 @@ interface SpriteFile {
   url: string;
 }
 
-// Bruxa e inocente têm uma pasta com um PNG por pose (walk.png, hurt.png...), e a chave da
+// O inocente tem uma pasta com um PNG por pose (walk.png, hurt.png...), e a chave da
 // textura vem da própria entidade, para os nomes não se repetirem em dois lugares.
 function spriteFiles<Pose extends string>(
   folder: string,
@@ -34,25 +35,42 @@ function spriteFiles<Pose extends string>(
   }));
 }
 
-// Fundos de todos os trechos da fase: uma pasta por trecho, com o nome do id, e layer1.png
-// (distante) a layer3.png (próxima). A chave da textura vem do backgroundKey em level-01.ts.
+// Fundos dos trechos da fase: uma pasta por trecho, com o nome do id. Com arte em camadas,
+// layer1.png (distante) a layer3.png (próxima); com imagem única, background.png. A chave da
+// textura vem do backgroundKey em level-01.ts.
 //
 // Todos são pedidos, sem uma lista à parte de "quais existem": essa lista precisaria ser
 // atualizada à mão e poderia esconder uma arte recém-adicionada. Se um arquivo faltar, o loader
 // do Phaser registra o erro no console e segue sem travar; a textura simplesmente não existe, e
 // o BackgroundSystem (via textures.exists) usa o fundo provisório só naquele trecho. O erro no
 // console é útil: avisa qual arquivo de arte está faltando.
-const BACKGROUND_FILES: SpriteFile[] = LEVEL_01.segments.flatMap((segment) =>
-  BACKGROUND_LAYER_NUMBERS.map((layerNumber) => ({
-    key: backgroundLayerKey(segment.backgroundKey, layerNumber),
-    url: `${BACKGROUNDS_PATH}/${segment.id}/layer${layerNumber}.png`,
-  })),
-);
+function backgroundFiles(segment: LevelSegment): SpriteFile[] {
+  const folder = `${BACKGROUNDS_PATH}/${segment.backgroundFolder ?? segment.id}`;
+  switch (segment.backgroundArt) {
+    case 'layers':
+      return BACKGROUND_LAYER_NUMBERS.map((layerNumber) => ({
+        key: backgroundLayerKey(segment.backgroundKey, layerNumber),
+        url: `${folder}/layer${layerNumber}.png`,
+      }));
+    case 'single':
+      return [{ key: segment.backgroundKey, url: `${folder}/background.png` }];
+    default:
+      return [];
+  }
+}
+
+// Arte do chefe final: o cenário da arena (a cena inteira, com o demônio) e as duas peças dos
+// ataques. As chaves das peças são as que o DemonBoss usa.
+const DEMON_FILES: readonly SpriteFile[] = [
+  { key: DEMON_BACKDROP_KEY, url: `${SPRITES_PATH}/demon-boss/body.png` },
+  { key: 'demon-boss-claw', url: `${SPRITES_PATH}/demon-boss/claw.png` },
+  { key: 'demon-boss-fireball', url: `${SPRITES_PATH}/demon-boss/fireball.png` },
+];
 
 const IMAGE_FILES: readonly SpriteFile[] = [
-  ...spriteFiles('witch', WITCH_POSES, witchTextureKey),
   ...spriteFiles('innocent', INNOCENT_POSES, innocentTextureKey),
-  ...BACKGROUND_FILES,
+  ...LEVEL_01.segments.flatMap(backgroundFiles),
+  ...DEMON_FILES,
 ];
 
 // Primeira cena: não desenha texto nenhum. Carrega as imagens e garante que as fontes
@@ -76,6 +94,13 @@ export class BootScene extends Phaser.Scene {
       frameWidth: KNIGHT_FRAME_SIZE,
       frameHeight: KNIGHT_FRAME_SIZE,
     });
+    // Inimigos com sprite sheet (bruxa, lobo, lobisomem): grade e arquivo vêm de enemy-animations.ts.
+    for (const sheet of ENEMY_SHEETS) {
+      this.load.spritesheet(sheet.textureKey, `${SPRITES_PATH}/${sheet.fileName}`, {
+        frameWidth: sheet.frameWidth,
+        frameHeight: sheet.frameHeight,
+      });
+    }
   }
 
   create(): void {
@@ -83,7 +108,12 @@ export class BootScene extends Phaser.Scene {
     // pixelArt: true usa o pixel mais próximo ao redimensionar, ótimo para pixel art, mas
     // personagens e fundos são ilustrações redimensionadas: sem filtro linear, as bordas
     // ficariam serrilhadas.
-    for (const key of [...IMAGE_FILES.map((file) => file.key), KNIGHT_SHEET_KEY]) {
+    const enemySheetKeys = ENEMY_SHEETS.map((sheet) => sheet.textureKey);
+    for (const key of [
+      ...IMAGE_FILES.map((file) => file.key),
+      KNIGHT_SHEET_KEY,
+      ...enemySheetKeys,
+    ]) {
       this.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
     }
     void waitForGameFonts().then(() => this.scene.start(SCENE_KEYS.menu));

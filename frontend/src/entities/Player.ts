@@ -173,6 +173,19 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.effects.blink(this, INVINCIBILITY_MS);
   }
 
+  // Parado esperando alguém chegar para falar: sem entrada, mas com gravidade, para quem estava
+  // no ar pousar. A pose sai da mesma regra de sempre (repouso no chão, queda no ar).
+  holdStill(): void {
+    if (this.state === 'death') {
+      return;
+    }
+    const now = this.scene.time.now;
+    if (now >= this.knockbackEndsAt) {
+      this.setVelocityX(0);
+    }
+    this.setState(this.resolveState(0, now));
+  }
+
   // Para o personagem no lugar na vitória: sem velocidade e sem física, ele não cai nem é
   // empurrado enquanto a tela de resultado não chega. O estado 'victory' só é alcançado por
   // aqui, pois depois do fim da partida a LevelScene não chama mais o update.

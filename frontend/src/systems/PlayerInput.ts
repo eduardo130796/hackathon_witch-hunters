@@ -30,6 +30,14 @@ export class PlayerInput {
     return this.keysByAction[action].some((key) => key.isDown);
   }
 
+  // Joga fora os toques de pulo e ataque acumulados (JustDown guarda o toque até ser lido).
+  // Usado enquanto um diálogo está aberto: a tecla que fecha a fala não pode, no quadro
+  // seguinte, virar um pulo ou um golpe.
+  discardActionPresses(): void {
+    this.justPressed('jump');
+    this.justPressed('attack');
+  }
+
   // JustDown limpa o estado da tecla ao ser lido, por isso todas são consultadas (filter),
   // e não só até a primeira verdadeira (some): senão uma tecla "sobraria" para o quadro seguinte.
   justPressed(action: ControlAction): boolean {

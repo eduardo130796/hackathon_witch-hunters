@@ -64,11 +64,15 @@ export class AudioCueSystem {
   }
 
   // Mesmo critério do jogador: um golpe novo da bruxa (o chefe incluído) toca o som mágico.
+  // Lobo e lobisomem herdam de Witch, mas mordem e arranham (castsMagic = false); sem um
+  // arquivo de som de mordida, o golpe deles fica em silêncio.
   private updateWitchAttacks(): void {
     for (const witch of this.witches) {
       if (witch.swingId !== this.witchSwingIds.get(witch)) {
         this.witchSwingIds.set(witch, witch.swingId);
-        this.audio.playAttackMagic();
+        if (witch.castsMagic) {
+          this.audio.playAttackMagic();
+        }
       }
     }
   }

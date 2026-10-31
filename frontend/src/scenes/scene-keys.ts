@@ -2,6 +2,8 @@
 export const SCENE_KEYS = {
   boot: 'BootScene',
   menu: 'MenuScene',
+  story: 'StoryScene',
+  howToPlay: 'HowToPlayScene',
   level: 'LevelScene',
   ranking: 'RankingScene',
   result: 'ResultScene',

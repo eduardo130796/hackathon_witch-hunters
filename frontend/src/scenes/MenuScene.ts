@@ -47,11 +47,17 @@ export class MenuScene extends Phaser.Scene {
       x: centerX,
       y: firstButtonY,
       label: 'Iniciar',
-      onClick: goTo(SCENE_KEYS.level),
+      onClick: goTo(SCENE_KEYS.story),
     });
     new GothicButton(this, {
       x: centerX,
       y: firstButtonY + buttonGap,
+      label: 'Como jogar',
+      onClick: goTo(SCENE_KEYS.howToPlay),
+    });
+    new GothicButton(this, {
+      x: centerX,
+      y: firstButtonY + buttonGap * 2,
       label: 'Ranking',
       onClick: goTo(SCENE_KEYS.ranking),
     });

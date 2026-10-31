@@ -53,6 +53,13 @@ export class HealthBar {
     });
   }
 
+  // Várias barras dividem o mesmo lugar no topo da tela (uma por trecho com mini-chefe ou
+  // chefe): ao sair do trecho, a barra some na hora para não ficar sob a do trecho seguinte.
+  hide(): void {
+    this.container.scene.tweens.killTweensOf(this.container);
+    this.container.setAlpha(0).setVisible(false);
+  }
+
   // ratio de 0 a 1; valores fora disso são presos ao intervalo para a barra nunca vazar.
   setRatio(ratio: number): void {
     this.fill.scaleX = Phaser.Math.Clamp(ratio, 0, 1);

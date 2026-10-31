@@ -9,35 +9,29 @@ import {
   WITCH_CHASE_SPEED,
   WITCH_DETECTION_RADIUS,
   WITCH_DISPLAY_HEIGHT,
+  WITCH_FLEE_SPEED,
+  WITCH_FLEE_VANISH_DISTANCE,
   WITCH_MAX_HEALTH,
   WITCH_PATROL_SPEED,
 } from '../config/balance';
-import { Enemy, type EnemyPlacement } from './Enemy';
-import { frontHitbox } from './hitbox';
+import { Enemy, type ApproachPlan, type EnemyPlacement } from './Enemy';
+import {
+  registerEnemySheetAnimations,
+  WITCH_SHEET,
+  type EnemySheet,
+  type EnemySheetState,
+} from './enemy-animations';
+import { frontHitbox, type HitOutcome } from './hitbox';
 
-type WitchState = 'patrol' | 'chase' | 'attack' | 'hurt' | 'dead';
-
-// As imagens são poses, com os mesmos nomes do cavaleiro ('knight-walk'). Estado é
-// comportamento: patrulhar e perseguir usam a mesma pose de caminhada. A BootScene carrega
-// cada pose de public/assets/sprites/witch/ com estas chaves.
-export const WITCH_POSES = ['walk', 'attack', 'hurt', 'death'] as const;
-type WitchPose = (typeof WITCH_POSES)[number];
-
-const POSE_BY_STATE: Record<WitchState, WitchPose> = {
-  patrol: 'walk',
-  chase: 'walk',
-  attack: 'attack',
-  hurt: 'hurt',
-  dead: 'death',
-};
-
-export function witchTextureKey(pose: WitchPose): string {
-  return `witch-${pose}`;
-}
+// 'dormant' é a bruxa adormecida: parada, sem detectar nem atacar até awaken(). 'approach' é a
+// adormecida que vem ao encontro do jogador para provocá-lo (approachPlan), ainda sem atacar.
+// 'flee' e 'gone' tiram a bruxa da luta sem matá-la (flee e dismiss): ela foge e depois some.
+type WitchState =
+  'dormant' | 'approach' | 'patrol' | 'chase' | 'attack' | 'flee' | 'gone' | 'hurt' | 'dead';
 
 // O que a bruxa precisa saber do alvo. Uma interface, e não o Player, para a bruxa não
 // depender de outra entidade.
-interface WitchTarget {
+export interface WitchTarget {
   readonly x: number;
   readonly y: number;
   isAlive(): boolean;
@@ -45,11 +39,24 @@ interface WitchTarget {
 
 // O que muda entre a bruxa comum e suas versões mais fortes (o chefe, as bruxas de trechos
 // avançados). Opcionais no construtor: sem nada, vale a bruxa comum de balance.ts.
+// Lobo e lobisomem também usam estas características: são a mesma inteligência com outros
+// números e outra sprite sheet.
 export interface WitchTraits {
   maxHealth: number;
   displayHeight: number;
   attackDamage: number;
   detectionRadius: number;
+  patrolSpeed: number;
+  chaseSpeed: number;
+  // Começa adormecida (parada, sem detectar nem atacar) até alguém chamar awaken(). Usado
+  // pela narrativa na bruxa que provoca o jogador antes da luta.
+  startsDormant: boolean;
+  // Só para a adormecida: vai ao encontro do jogador e avisa a chegada, que abre a fala.
+  approachPlan?: ApproachPlan;
+  // Ataque mágico: o AudioCueSystem toca o som de magia a cada golpe. Lobos mordem e arranham.
+  castsMagic: boolean;
+  // Sprite sheet e mapa estado → animação (enemy-animations.ts).
+  sheet: EnemySheet;
 }
 
 const COMMON_WITCH_TRAITS: WitchTraits = {
@@ -57,12 +64,40 @@ const COMMON_WITCH_TRAITS: WitchTraits = {
   displayHeight: WITCH_DISPLAY_HEIGHT,
   attackDamage: WITCH_ATTACK_DAMAGE,
   detectionRadius: WITCH_DETECTION_RADIUS,
+  patrolSpeed: WITCH_PATROL_SPEED,
+  chaseSpeed: WITCH_CHASE_SPEED,
+  startsDormant: false,
+  castsMagic: true,
+  sheet: WITCH_SHEET,
+};
+
+// Estados sem animação própria nas sprite sheets usam uma das existentes: o encontro e a fuga
+// andam (patrulha e perseguição); a bruxa que sumiu fica invisível.
+const WITCH_ANIMATION_STATE: Record<WitchState, EnemySheetState> = {
+  dormant: 'dormant',
+  approach: 'patrol',
+  patrol: 'patrol',
+  chase: 'chase',
+  attack: 'attack',
+  flee: 'chase',
+  gone: 'dormant',
+  hurt: 'hurt',
+  dead: 'dead',
 };
 
 export class Witch extends Enemy {
   // Lido pelo CombatSystem, que aplica o dano: assim o chefe fere mais sem regra especial lá.
   readonly attackDamage: number;
+  // Lido pelo AudioCueSystem para decidir se o golpe toca o som de magia.
+  readonly castsMagic: boolean;
   private readonly detectionRadius: number;
+  private readonly patrolSpeed: number;
+  private readonly chaseSpeed: number;
+  private readonly sheet: EnemySheet;
+  private dormant: boolean;
+  private readonly approachPlan?: ApproachPlan;
+  // Saída da luta pedida por flee() ou dismiss(); sem valor, a bruxa luta normalmente.
+  private leaving?: 'flee' | 'gone';
   private attackStartedAt = 0;
   private attackEndsAt = 0;
   private nextAttackAt = 0;
@@ -76,17 +111,50 @@ export class Witch extends Enemy {
   ) {
     const traits = { ...COMMON_WITCH_TRAITS, ...overrides };
     super(scene, placement, {
-      initialTextureKey: witchTextureKey(POSE_BY_STATE.patrol),
+      initialTextureKey: traits.sheet.textureKey,
       maxHealth: traits.maxHealth,
       displayHeight: traits.displayHeight,
     });
     this.attackDamage = traits.attackDamage;
+    this.castsMagic = traits.castsMagic;
     this.detectionRadius = traits.detectionRadius;
-    this.applyState('patrol');
+    this.patrolSpeed = traits.patrolSpeed;
+    this.chaseSpeed = traits.chaseSpeed;
+    this.sheet = traits.sheet;
+    this.dormant = traits.startsDormant;
+    this.approachPlan = traits.approachPlan;
+    registerEnemySheetAnimations(scene.anims, traits.sheet);
+    this.applyState(this.dormant ? 'dormant' : 'patrol');
+  }
+
+  // Acorda a bruxa adormecida: a partir do próximo quadro ela patrulha, detecta e ataca.
+  awaken(): void {
+    this.dormant = false;
+  }
+
+  // Um golpe acorda a bruxa adormecida: ignorar o ataque do jogador pareceria um defeito.
+  override takeDamage(amount: number): HitOutcome {
+    // Quem saiu da luta não apanha: não vira morte de bruxa no placar nem alvo para farmar.
+    if (this.leaving) {
+      return 'ignored';
+    }
+    this.awaken();
+    return super.takeDamage(amount);
+  }
+
+  // Foge para a direita e some quando estiver longe do jogador, fora da tela. Usado pela
+  // bruxa da provocação, que corre para avisar as outras bruxas.
+  flee(): void {
+    this.leaving = 'flee';
+  }
+
+  // Sai da fase na hora, sem animação: o fim da fuga, já fora da tela.
+  private dismiss(): void {
+    this.leaving = 'gone';
   }
 
   update(): void {
-    if (this.state === 'dead') {
+    if (this.state === 'dead' || this.state === 'gone') {
       return;
     }
     this.refreshState();
@@ -117,8 +185,14 @@ export class Witch extends Enemy {
     if (!this.isAlive()) {
       return 'dead';
     }
+    if (this.leaving) {
+      return this.leaving;
+    }
     if (now < this.hurtEndsAt) {
       return 'hurt';
+    }
+    if (this.dormant) {
+      return this.approachPlan && !this.approachArrived ? 'approach' : 'dormant';
     }
     if (now < this.attackEndsAt) {
       return 'attack';
@@ -141,10 +215,12 @@ export class Witch extends Enemy {
     return this;
   }
 
-  // Troca a textura e faz o que só acontece na entrada do estado.
+  // Troca a animação e faz o que só acontece na entrada do estado.
   private applyState(next: WitchState): void {
     this.state = next;
-    this.showTexture(witchTextureKey(POSE_BY_STATE[next]));
+    // O encontro usa a caminhada da patrulha: as sprite sheets não têm uma animação própria.
+    const animationState = WITCH_ANIMATION_STATE[next];
+    this.showSheetAnimation(this.sheet, this.sheet.animationByState[animationState]);
     if (next === 'attack') {
       this.startAttack();
     } else if (next === 'hurt') {
@@ -152,6 +228,9 @@ export class Witch extends Enemy {
       this.attackEndsAt = 0;
     } else if (next === 'dead') {
       this.becomeCorpse();
+    } else if (next === 'gone') {
+      this.becomeCorpse();
+      this.setVisible(false);
     }
   }
 
@@ -166,12 +245,22 @@ export class Witch extends Enemy {
 
   // Movimento contínuo de cada estado, executado a cada quadro.
   private move(): void {
+    if (this.state === 'flee') {
+      this.runAway();
+      return;
+    }
     if (this.state === 'patrol') {
-      this.patrol(WITCH_PATROL_SPEED);
+      this.patrol(this.patrolSpeed);
       return;
     }
     if (this.state === 'chase') {
       this.chase();
+      return;
+    }
+    if (this.state === 'approach') {
+      if (this.approachPlan) {
+        this.advanceApproach(this.approachPlan);
+      }
       return;
     }
     this.stopMoving();
@@ -184,9 +273,17 @@ export class Witch extends Enemy {
     this.faceTarget();
     const horizontalDistance = Math.abs(this.target.x - this.x);
     if (horizontalDistance > WITCH_ATTACK_RANGE) {
-      this.setVelocityX(this.facing * WITCH_CHASE_SPEED);
+      this.setVelocityX(this.facing * this.chaseSpeed);
     } else {
       this.stopMoving();
+    }
+  }
+
+  private runAway(): void {
+    this.face(1);
+    this.setVelocityX(WITCH_FLEE_SPEED);
+    if (Math.abs(this.x - this.target.x) > WITCH_FLEE_VANISH_DISTANCE) {
+      this.dismiss();
     }
   }
 

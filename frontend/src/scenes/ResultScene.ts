@@ -3,10 +3,12 @@ import { validateNickname } from '../domain/nickname';
 import type { MatchOutcome } from '../domain/match-rules';
 import { scoreBreakdown } from '../domain/score-formula';
 import { submitScore } from '../services/scores-api';
+import { getAudioSystem } from '../systems/AudioSystem';
 import type { MatchResult } from '../types/api';
 import { GothicButton } from '../ui/components/GothicButton';
 import { ScoreBreakdownPanel } from '../ui/components/ScoreBreakdownPanel';
 import { addSceneTitle } from '../ui/components/SceneTitle';
+import { addVictoryBanner } from '../ui/components/VictoryBanner';
 import { addVignette } from '../ui/effects/Vignette';
 import { NickInput } from '../ui/overlays/NickInput';
 import { COLORS, FONTS, FONT_SIZES, LAYOUT, cssColor } from '../ui/theme';
@@ -14,14 +16,16 @@ import { SCENE_KEYS } from './scene-keys';
 
 const { result } = LAYOUT;
 
-// Mensagem de fechamento conforme o fim da partida. Na derrota, o texto lembra que a
-// pontuação ainda vale e pode ir para o ranking: morrer não apaga o que o jogador fez.
-const OUTCOME_MESSAGES = {
-  victory: { text: 'Vitória! As bruxas foram derrotadas.', color: COLORS.magic },
-  defeat: {
-    text: 'Você caiu em combate, mas a pontuação ainda pode ir para o ranking.',
-    color: COLORS.danger,
-  },
+// Cabeçalho conforme o fim da partida. Na vitória, um título próprio fecha a história do
+// epílogo. Na derrota, o texto lembra que a pontuação ainda vale e pode ir para o ranking:
+// morrer não apaga o que o jogador fez.
+const VICTORY_TEXTS = {
+  title: 'Vitória!',
+  subtitle: 'Vellmark está salva: o Demônio e suas bruxas caíram.',
+} as const;
+const DEFEAT_TEXTS = {
+  title: 'Fim da caçada',
+  message: 'Você caiu em combate, mas a pontuação ainda pode ir para o ranking.',
 } as const;
 
 // Fim da partida: mostra a estimativa, pede o nick e envia os contadores ao servidor.
@@ -50,12 +54,13 @@ export class ResultScene extends Phaser.Scene {
 
   create(): void {
     addVignette(this);
+    // Sem isto, a trilha da fase (a do chefe, numa vitória) seguiria tocando aqui. A do menu
+    // encerra a partida e continua sem recomeçar no menu e no ranking.
+    getAudioSystem(this.game).playMenuTheme(this);
     const { width, height } = this.scale;
     const centerX = width / 2;
 
-    addSceneTitle(this, 'Fim da caçada', result.titleYRatio);
-    const outcomeMessage = this.victory ? OUTCOME_MESSAGES.victory : OUTCOME_MESSAGES.defeat;
-    this.addBodyText(height * result.outcomeYRatio, outcomeMessage.text, outcomeMessage.color);
+    this.addOutcomeHeader();
     new ScoreBreakdownPanel(
       this,
       { x: centerX, top: height * result.breakdownTopYRatio },
@@ -88,6 +93,22 @@ export class ResultScene extends Phaser.Scene {
       label: 'Menu',
       onClick: () => this.scene.start(SCENE_KEYS.menu),
     });
+  }
+
+  // Antes do painel de pontos: as brasas da vitória ficam atrás dele.
+  private addOutcomeHeader(): void {
+    const { height } = this.scale;
+    if (this.victory) {
+      addVictoryBanner(this, {
+        x: this.scale.width / 2,
+        titleY: height * result.titleYRatio,
+        subtitleY: height * result.outcomeYRatio,
+        ...VICTORY_TEXTS,
+      });
+      return;
+    }
+    addSceneTitle(this, DEFEAT_TEXTS.title, result.titleYRatio);
+    this.addBodyText(height * result.outcomeYRatio, DEFEAT_TEXTS.message, COLORS.danger);
   }
 
   private async save(): Promise<void> {

@@ -25,6 +25,7 @@ export class EffectsSystem {
   private hitstopEndsAt = 0;
   private hitstopTimer?: Phaser.Time.TimerEvent;
   private shakeIntensity = 0;
+  private physicsHeld = false;
 
   constructor(private readonly tweens: Phaser.Tweens.TweenManager) {}
 
@@ -85,9 +86,28 @@ export class EffectsSystem {
     this.hitstopTimer?.remove(false);
     scene.physics.world.isPaused = true;
     this.hitstopTimer = scene.time.delayedCall(durationMs, () => {
-      scene.physics.world.isPaused = false;
       this.hitstopTimer = undefined;
+      // Um diálogo aberto durante o hitstop continua segurando a física: o fim do golpe não
+      // pode soltar o jogador enquanto ele ainda está lendo.
+      if (!this.physicsHeld) {
+        scene.physics.world.isPaused = false;
+      }
     });
+  }
+
+  // Pausa longa e sem prazo (diálogo). Passa pelo mesmo lugar que o hitstop para que uma
+  // pausa não retome a física antes da hora da outra.
+  holdPhysics(scene: Phaser.Scene): void {
+    this.physicsHeld = true;
+    scene.physics.world.isPaused = true;
+  }
+
+  // Só retoma se nenhum hitstop estiver em andamento; senão o fim do hitstop retoma.
+  releasePhysics(scene: Phaser.Scene): void {
+    this.physicsHeld = false;
+    if (!this.hitstopTimer) {
+      scene.physics.world.isPaused = false;
+    }
   }
 
   // Treme a câmera principal. Um tremor fraco não substitui um forte em andamento (o golpe

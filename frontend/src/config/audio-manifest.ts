@@ -47,9 +47,14 @@ export const MENU_MUSIC_KEY = 'menu-theme';
 // mapa simplesmente mantém a música que estiver tocando.
 export const SEGMENT_MUSIC_KEYS: Readonly<Record<string, string>> = {
   graveyard: 'ambient-graveyard',
-  ruins: 'ambient-ruins',
+  // A floresta ocupou o lugar das ruínas na fase e herda a trilha delas: não há música própria
+  // da floresta, e a das ruínas ficaria sem uso.
+  forest: 'ambient-ruins',
   catacombs: 'ambient-catacombs',
   'boss-arena': 'ambient-boss',
+  // O trecho final continua com a trilha do chefe: a mesma faixa segue tocando sem recomeçar
+  // (playMusic ignora a faixa atual), e o clímax não perde o embalo da luta anterior.
+  'final-stage': 'ambient-boss',
 };
 
 // Trecho cuja entrada toca o som de anúncio do chefe antes da música.
@@ -72,7 +77,8 @@ function variantFiles(): AudioFile[] {
 }
 
 function musicFiles(): AudioFile[] {
-  const keys = [MENU_MUSIC_KEY, ...Object.values(SEGMENT_MUSIC_KEYS)];
+  // Set: dois trechos podem dividir a mesma faixa, e cada arquivo só deve ser carregado uma vez.
+  const keys = [...new Set([MENU_MUSIC_KEY, ...Object.values(SEGMENT_MUSIC_KEYS)])];
   return keys.map((key) => ({ key, url: `${AUDIO_PATH}/music/${key}.mp3` }));
 }
 

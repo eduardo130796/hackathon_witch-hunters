@@ -22,7 +22,7 @@ import { spawnBloodSplatter } from '../ui/effects/BloodSplatter';
 import { addDamageFlash, type DamageFlash } from '../ui/effects/DamageFlash';
 import { addDeathShade, type DeathShade } from '../ui/effects/DeathShade';
 import { COLORS } from '../ui/theme';
-import type { CombatListener, EnemyHitEvent, PlayerHitEvent } from './CombatSystem';
+import type { CombatListener, DemonHitEvent, EnemyHitEvent, PlayerHitEvent } from './CombatSystem';
 import type { EffectsSystem } from './EffectsSystem';
 
 // Reage aos golpes avisados pelo CombatSystem com efeitos de tela, câmera e partículas. As
@@ -69,6 +69,27 @@ export class CombatFeedbackSystem implements CombatListener {
     this.showScoreDelta(event.scoreDelta, hurtbox.centerX, hurtbox.top);
   }
 
+  // Golpe no ponto fraco do demônio: mesma pausa e tremor de um golpe em bruxa, sem empurrão
+  // (ele é parte do cenário). A morte mostra o "+100" da bruxa que ela vale no placar.
+  onDemonHit(event: DemonHitEvent): void {
+    const { weakPoint, direction } = event;
+    const killed = event.outcome === 'killed';
+    this.effects.hitstop(this.scene, killed ? KILL_HITSTOP_DURATION_MS : HITSTOP_DURATION_MS);
+    this.effects.shakeCamera(
+      this.scene,
+      killed ? KILL_SHAKE_INTENSITY : SHAKE_INTENSITY,
+      killed ? KILL_SHAKE_DURATION_MS : SHAKE_DURATION_MS,
+    );
+    spawnBloodSplatter(
+      this.scene,
+      weakPoint.centerX,
+      weakPoint.centerY,
+      killed ? 'kill' : 'hit',
+      direction,
+    );
+    this.showScoreDelta(event.scoreDelta, weakPoint.centerX, weakPoint.top);
+  }
+
   // Dano não fatal: flash vermelho, tremor e empurrão para longe da bruxa. A direção do
   // evento já é a do golpe (da bruxa para o jogador), então empurrar nela afasta o jogador do
   // atacante. O piscar de invencibilidade já é feito pelo próprio Player ao levar dano.
@@ -80,7 +101,7 @@ export class CombatFeedbackSystem implements CombatListener {
     }
     this.effects.shakeCamera(this.scene, SHAKE_INTENSITY, SHAKE_DURATION_MS);
     this.effects.knockback(this.player, event.direction, {
-      horizontal: PLAYER_KNOCKBACK_FORCE,
+      horizontal: event.knockbackForce ?? PLAYER_KNOCKBACK_FORCE,
       lift: PLAYER_KNOCKBACK_LIFT,
     });
   }

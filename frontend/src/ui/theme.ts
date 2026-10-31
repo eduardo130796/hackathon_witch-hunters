@@ -50,7 +50,7 @@ export const TIMING_MS = {
 export const LAYOUT = {
   // disabledAlpha: botão esmaecido deixa claro que o clique não vai funcionar agora.
   button: { width: 280, height: 64, borderWidth: 2, hoverScale: 1.05, disabledAlpha: 0.5 },
-  menu: { titleYRatio: 0.3, firstButtonYRatio: 0.58, buttonGap: 80 },
+  menu: { titleYRatio: 0.3, firstButtonYRatio: 0.52, buttonGap: 80 },
   ranking: {
     titleYRatio: 0.1,
     tableTopYRatio: 0.2,
@@ -85,11 +85,9 @@ export const LAYOUT = {
   level: {
     groundBorderWidth: 2,
     playerDepth: 1,
-    // Marcadores provisórios, desenhados com retângulos até existir arte própria. A bandeira
-    // tem mais ou menos a altura do cavaleiro (128px), para ser vista de longe.
-    checkpointFlag: { poleWidth: 6, poleHeight: 140, bannerWidth: 48, bannerHeight: 32 },
-    // Portal da saída: largo e translúcido, lido como "passagem" e não como parede.
-    exitPortal: { width: 96, height: 200, alpha: 0.35 },
+    // px acima do chão onde nascem os avisos flutuantes: um pouco mais que a altura do
+    // cavaleiro (128px), para o texto não cobrir o personagem.
+    floatingTextHeight: 140,
     // px que o texto flutuante sobe enquanto some.
     floatingTextRise: 48,
   },
@@ -165,3 +163,155 @@ export function cssRgba(color: number, alpha: number): string {
   const blue = color & CHANNEL_MASK;
   return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
 }
+
+// --- Diálogo narrativo e fundos provisórios dos trechos novos ---
+
+// Painel de fala na base da tela, no estilo dos painéis góticos (fundo panel, borda
+// panelBorder). Acima do HUD (1001): enquanto alguém fala, o texto é o mais importante na tela.
+export const DIALOGUE_BOX = {
+  width: 1120,
+  height: 168,
+  // Distância do topo da tela: abaixo do HUD e da barra de chefe (que termina perto de y=90)
+  // e bem acima dos personagens (pés em y=656). Embaixo, o painel escondia quem está falando.
+  topMargin: 112,
+  borderWidth: 2,
+  padding: 24,
+  speakerGap: 12,
+  depth: 1002,
+  speakerFontSize: '22px',
+  textFontSize: '20px',
+  // Aviso discreto de como avançar, no canto inferior direito do painel.
+  hintFontSize: '14px',
+} as const;
+
+// Tingimento provisório dos trechos sem arte de fundo própria. A floresta é verde-acinzentada
+// escura (mata fechada à noite); o trecho final, vermelho-alaranjado intenso, destaca o clímax.
+export const SEGMENT_PLACEHOLDER_TINTS = {
+  forest: 0x3a4a3c,
+  finalStage: 0xe0451c,
+} as const;
+
+// --- Chefe demônio (só visual) ---
+export const DEMON_VISUALS = {
+  // Ataques à frente do cavaleiro (depth 1) e do sangue (2): o perigo nunca fica escondido.
+  attackDepth: 3,
+  // Destaque do ponto fraco: pulsa entre os dois alfas enquanto ele está exposto.
+  weakPoint: { depth: 0.5, minAlpha: 0.15, maxAlpha: 0.6 },
+  // Anel cinza que se abre no ponto fraco quando o golpe é bloqueado.
+  blockedRing: { lineWidth: 4, endScale: 1.6 },
+  // Explosão da bola de fogo: partículas laranja e vermelhas em todas as direções.
+  explosion: {
+    count: 18,
+    speedMin: 120,
+    speedMax: 360,
+    gravityY: 500,
+    scale: 2.2,
+    lifespanMs: 550,
+    radius: 4,
+  },
+} as const;
+
+// --- Abertura da história (StoryScene) ---
+export const STORY_LAYOUT = {
+  // Fundo do slide bem apagado: o cenário dá o clima, mas o texto continua legível sobre ele.
+  backgroundAlpha: 0.3,
+  titleYRatio: 0.3,
+  // Topo do texto (origem no alto): linhas novas crescem para baixo sem empurrar o título.
+  textTopYRatio: 0.4,
+  textWidth: 880,
+  textFontSize: '26px',
+  lineSpacing: 10,
+  hintYRatio: 0.92,
+  hintFontSize: '14px',
+  // Acima da vinheta (1000), para o texto e o aviso não serem escurecidos nas bordas.
+  textDepth: 1001,
+} as const;
+
+// --- Tela "Como jogar" (HowToPlayScene) ---
+export const HOW_TO_PLAY_LAYOUT = {
+  titleYRatio: 0.1,
+  headingYRatio: 0.2,
+  firstRowYRatio: 0.28,
+  rowHeight: 40,
+  // Controles à esquerda (ação e teclas), dicas à direita. A coluna de teclas é larga para
+  // caber "W / Espaço / Seta para cima"; as dicas quebram linha e cedem o espaço.
+  actionXRatio: 0.08,
+  keysXRatio: 0.28,
+  tipsXRatio: 0.6,
+  tipsWidthRatio: 0.34,
+  tipGap: 14,
+  backButtonYRatio: 0.9,
+} as const;
+
+// --- Vitória na tela de resultado (VictoryBanner) ---
+export const VICTORY_BANNER = {
+  // Maior que o título comum das telas (heading, 40px): a vitória é o ápice da partida.
+  titleFontSize: '72px',
+  subtitleFontSize: '22px',
+  // Brilho: sombra sem deslocamento e bem borrada, na própria cor do título.
+  glowBlur: 24,
+  // Margem da textura do texto: sem ela o borrão do brilho é cortado num retângulo rente às
+  // letras. Igual ao glowBlur, para o brilho inteiro caber.
+  glowPadding: 24,
+  // Entrada: o título cresce de startScale até 1 em TIMING_MS.slow; depois respira até
+  // pulseScale. A respiração é ambiente e contínua, não uma transição, por isso não usa
+  // TIMING_MS (mesmo critério da deriva da névoa).
+  startScale: 0.6,
+  pulseScale: 1.04,
+  pulseMs: 1600,
+  // Brasas que sobem devagar pela tela, atrás do painel de pontos: celebração discreta, só
+  // com círculos desenhados em código, sem textura.
+  embers: {
+    count: 28,
+    minRadius: 1.5,
+    maxRadius: 3.5,
+    alpha: 0.7,
+    minRiseMs: 4000,
+    maxRiseMs: 7500,
+    // px de deriva lateral máxima de cada brasa durante a subida.
+    drift: 40,
+  },
+} as const;
+
+// --- Transição entre trechos da fase (BackgroundSystem) e cartão de título (LocationTitle) ---
+export const SEGMENT_TRANSITION = {
+  // Crossfade longo: os dois cenários ficam visíveis e se misturam, e a troca parece a
+  // chegada a outro lugar, não um corte. Mais de 1,5 s deixaria o fundo "sujo" por tempo demais.
+  crossfadeMs: 1200,
+  // Véu escuro que sobe até peakAlpha na metade do crossfade e volta a zero: esconde o
+  // momento em que as camadas dos dois trechos se sobrepõem. Fica acima do fundo (até -1) e
+  // abaixo do chão e dos personagens (0), para escurecer só o cenário.
+  veil: { peakAlpha: 0.5, depth: -0.6 },
+  // Faixa de névoa que atravessa a tela junto com o véu; distance é quantos px a textura
+  // desliza durante o crossfade, para a névoa parecer soprada e não parada.
+  fogSweep: { peakAlpha: 0.6, heightRatio: 0.8, distance: 320, depth: -0.5 },
+  // O trecho que sai desce para esta faixa de profundidade enquanto some, para o que entra
+  // ser desenhado inteiro por cima dele, sem camadas de um intercaladas com as do outro.
+  outgoingDepthOffset: -100,
+} as const;
+
+export const LOCATION_TITLE = {
+  // Abaixo do painel de diálogo (DIALOGUE_BOX: topo 112, altura 168, termina em y=280): o
+  // cartão pode aparecer no mesmo momento em que alguém fala sem que um cubra o outro. E acima
+  // das cabeças dos personagens (pés em y=656, cerca de 128px de altura).
+  centerY: 340,
+  // Acima da vinheta (1000), para não ser escurecido, e abaixo do escurecimento da morte
+  // (1000.2), do HUD e do diálogo, que são mais importantes que o nome do lugar.
+  depth: 1000.1,
+  nameFontSize: '44px',
+  subtitleFontSize: '18px',
+  lineWidth: 420,
+  lineThickness: 2,
+  // Espaço entre a linha de cima, o nome, o subtítulo e a linha de baixo.
+  gap: 12,
+  shadowBlur: 8,
+  // Contorno escuro do subtítulo: o texto fino some sobre céus claros ou vermelhos sem ele.
+  subtitleStrokeThickness: 3,
+  // px que o cartão sobe enquanto aparece: movimento discreto, de letreiro que surge.
+  rise: 12,
+  // Espera o crossfade passar da metade, para o nome surgir já sobre o cenário novo.
+  enterDelayMs: 500,
+  // Mesmo tempo para aparecer e sumir: o tween usa yoyo, que repete a duração na volta.
+  fadeMs: TIMING_MS.slow,
+  holdMs: 2200,
+} as const;

@@ -17,15 +17,15 @@ describe('resolveDeath', () => {
 });
 
 describe('isVictory', () => {
-  it('vence na zona final com o chefe derrotado', () => {
-    expect(isVictory({ playerX: 4800, finalZoneStartX: 4800, bossDefeated: true })).toBe(true);
+  it('vence com o chefe da arena e o demônio derrotados', () => {
+    expect(isVictory({ allBossesDefeated: true, demonDefeated: true })).toBe(true);
   });
 
-  it('não vence na zona final com o chefe vivo', () => {
-    expect(isVictory({ playerX: 5000, finalZoneStartX: 4800, bossDefeated: false })).toBe(false);
+  it('não vence com o demônio vivo, mesmo com o chefe da arena derrotado', () => {
+    expect(isVictory({ allBossesDefeated: true, demonDefeated: false })).toBe(false);
   });
 
-  it('não vence antes da zona final, mesmo com o chefe derrotado', () => {
-    expect(isVictory({ playerX: 4799, finalZoneStartX: 4800, bossDefeated: true })).toBe(false);
+  it('não vence com o chefe da arena vivo, mesmo com o demônio derrotado', () => {
+    expect(isVictory({ allBossesDefeated: false, demonDefeated: true })).toBe(false);
   });
 });
