@@ -4,7 +4,7 @@ Jogo de ação e plataforma gótico em 2D para navegador, com história, chefes,
 ranking mundial. Hackathon Projeção 2026, categoria **Veteranos**.
 
 - **Jogar online (URL pública):** https://jogo-halloween.onrender.com
-- **Vídeo do pitch e demonstração:** `pitch.mp4` neste ZIP (também em https://youtu.be/RhnP_UQBUSw)
+- **Vídeo do pitch e demonstração:** `pitch.mp4` neste ZIP (também em https://youtu.be/QYWeXfIUNlY)
 - **Apresentação:** `apresentacao.pdf` neste ZIP
 - **Código-fonte:** https://github.com/eduardo130796/hackathon_witch-hunters
 

@@ -21,3 +21,6 @@ coverage/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Vídeo do pitch: vai no ZIP de entrega, mas é pesado demais para o repositório.
+/pitch.mp4
