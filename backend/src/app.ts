@@ -10,7 +10,21 @@ const FRONTEND_DIST_PATH = path.resolve(import.meta.dirname, '../../frontend/dis
 
 export const app = express();
 
-app.use(helmet());
+// O Phaser carrega imagens e sons como blob: (lê o arquivo e cria uma URL local), e as
+// fontes vêm do Google Fonts. A política padrão do helmet bloqueia os dois, e o jogo abria
+// sem sprites; as demais proteções do helmet continuam como estão.
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        imgSrc: ["'self'", 'data:', 'blob:'],
+        mediaSrc: ["'self'", 'data:', 'blob:'],
+        styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+        fontSrc: ["'self'", 'data:', 'https://fonts.gstatic.com'],
+      },
+    },
+  }),
+);
 // Uma partida tem poucos campos; um limite pequeno evita que corpos enormes ocupem memória.
 app.use(express.json({ limit: JSON_BODY_LIMIT }));
 app.use('/api', apiRouter);

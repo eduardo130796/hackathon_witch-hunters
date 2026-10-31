@@ -3,6 +3,21 @@
 Jogo de plataforma gótico para navegador, com API própria e ranking mundial.
 Regras do projeto: [CLAUDE.md](CLAUDE.md).
 
+**Jogar online:** LINK_PUBLICO
+
+## Publicação (Render)
+
+O `Dockerfile` da raiz gera um único serviço Node que entrega o jogo e a API na mesma URL.
+O `render.yaml` descreve o serviço e o banco PostgreSQL gratuitos.
+
+1. No [Render](https://render.com), entre com a conta do GitHub.
+2. **New → Blueprint**, escolha este repositório (branch `main`) e confirme com **Apply**.
+3. O Render cria o banco, preenche `DATABASE_URL` e faz o build (5 a 10 minutos).
+   A tabela do ranking é criada automaticamente na primeira subida do servidor.
+4. O link público aparece no topo do serviço `jogo-halloween`.
+
+No plano gratuito o serviço "dorme" sem uso: a primeira visita leva cerca de 30 a 50 s.
+
 ## Back-end (local)
 
 Requisitos: Node.js 22 e PostgreSQL 16.
